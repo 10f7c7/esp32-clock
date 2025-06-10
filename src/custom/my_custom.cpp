@@ -11,19 +11,18 @@
 #include "my_custom.h"
 #include "hasp_debug.h"
 
-#define ST_CP 9
-#define SH_CP 8
-#define SHFT_DS 7
-#define HR1 48
-#define HR2 47
-#define MIN1 16
-#define MIN2 15
-#define SEC 10
+#define ST_CP 17
+#define SH_CP 16
+#define SHFT_DS 15
+#define HR1 7
+#define HR2 6
+#define MIN1 5
+#define MIN2 4
+#define SEC 18
 #define MUX_SPEED 1
 unsigned long prev_mux = 0;
 
 #define GPS_RX 40
-#define GPS_TX 41
 #define GPS_BAUD 9600
 EspSoftwareSerial::UART gpsSerial;
 
@@ -107,23 +106,23 @@ void custom_setup()
     // Initialization code here
     randomSeed(millis());
     // gpsSerial.begin(GPS_BAUD, EspSoftwareSerial::SWSERIAL_8N1, GPS_RX, -1, false);
-    time_t now = 1748439452;
+    // time_t now = 1748439452;
 
-    struct tm timeinfo;
+    // struct tm timeinfo;
 
-    timeinfo.tm_hour = 12;
-    timeinfo.tm_min  = 48;
-    timeinfo.tm_year = 2018 - 1900;
-    timeinfo.tm_mon  = 10;
-    timeinfo.tm_mday = 15;
-    // timeinfo.tm_hour = 14;
-    // timeinfo.tm_min = 10;
-    timeinfo.tm_sec = 10;
-    time_t t        = mktime(&timeinfo);
-    printf("Setting time: %s", asctime(&timeinfo));
-    struct timeval nowTmp = {.tv_sec = t};
+    // timeinfo.tm_hour = 12;
+    // timeinfo.tm_min  = 48;
+    // timeinfo.tm_year = 2018 - 1900;
+    // timeinfo.tm_mon  = 10;
+    // timeinfo.tm_mday = 15;
+    // // timeinfo.tm_hour = 14;
+    // // timeinfo.tm_min = 10;
+    // timeinfo.tm_sec = 10;
+    // time_t t        = mktime(&timeinfo);
+    // printf("Setting time: %s", asctime(&timeinfo));
+    // struct timeval nowTmp = {.tv_sec = t};
 
-    settimeofday(&nowTmp, NULL);
+    // settimeofday(&nowTmp, NULL);
 
     // clock init
     pinMode(ST_CP, OUTPUT);
@@ -158,9 +157,7 @@ void custom_loop()
     Cron.delay();
 
     // 7seg time
-    // if(!(millis() % 100)) {
-    //     digitalWrite(SEC, rawtime % 2);
-    // }
+    
 
     // for(int i = 0; i < 4; i++) {
     //     // take the latchPin low so
@@ -221,10 +218,13 @@ void custom_clock_loop()
 {
     time_t rawtime;
     time(&rawtime);
-
+    
     struct tm* timeinfo;
     timeinfo = localtime(&rawtime);
     // for(int i = 0; i < 4; i++) {
+    if (!(millis() % 100)) {
+        digitalWrite(SEC, timeinfo->tm_sec % 2);
+    }
     if(i == 0) {
         digitalWrite(HR1, LOW);
         digitalWrite(HR2, LOW);
@@ -290,7 +290,6 @@ bool custom_pin_in_use(uint8_t pin)
         case MIN2:
         case SEC:
         case GPS_RX:
-        case GPS_TX:
             return true;
         default:
             return false;
@@ -308,7 +307,6 @@ void custom_get_sensors(JsonDocument& doc)
 
 void custom_topic_payload(const char* topic, const char* payload, uint8_t source)
 {
-    // Not used
     char buffer[500];
     sprintf(buffer, "T: %s | PL: %s", topic, payload);
     LOG_VERBOSE(TAG_CUSTOM, buffer);
@@ -318,27 +316,27 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
 {
     char buffer[500];
     sprintf(buffer, "ST: %s | PL: %s", subtopic, payload);
-    if(strcmp("p1b11", subtopic)) return;
     LOG_VERBOSE(TAG_CUSTOM, buffer);
-    StaticJsonDocument<128> json;
-    DeserializationError jsonError = deserializeJson(json, payload);
+    // if(strcmp("p1b11", subtopic)) return;
+    // StaticJsonDocument<128> json;
+    // DeserializationError jsonError = deserializeJson(json, payload);
 
-    if(jsonError) { // Couldn't parse incoming JSON command
-        dispatch_json_error(TAG_MSGR, jsonError);
-    } else {
-        JsonVariant event = json[F("event")];
-        JsonVariant value = json[F("text")];
+    // if(jsonError) { // Couldn't parse incoming JSON command
+    //     dispatch_json_error(TAG_MSGR, jsonError);
+    // } else {
+    //     JsonVariant event = json[F("event")];
+    //     JsonVariant value = json[F("text")];
 
-        if(!strcmp("changed", event.as<const char*>())) {
-            LOG_VERBOSE(TAG_CUSTOM, "CHANGING");
-            if(!strcmp("p1b11", subtopic)) {
-                alarmHour = value.as<String>();
-            }
-            if(!strcmp("p1b2", subtopic)) {
-                alarmMinute = value.as<String>();
-            }
-        }
-    }
+    //     if(!strcmp("changed", event.as<const char*>())) {
+    //         LOG_VERBOSE(TAG_CUSTOM, "CHANGING");
+    //         if(!strcmp("p1b11", subtopic)) {
+    //             alarmHour = value.as<String>();
+    //         }
+    //         if(!strcmp("p1b2", subtopic)) {
+    //             alarmMinute = value.as<String>();
+    //         }
+    //     }
+    // }
 }
 
 void custom_alarm_set()
