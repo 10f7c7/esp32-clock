@@ -197,6 +197,7 @@ IRAM_ATTR void loop()
 
 #if defined(HASP_USE_CUSTOM) && HASP_USE_CUSTOM > 0
     custom_loop();
+    custom_clock_loop();
 #endif
 
 #ifdef HASP_USE_STAT_COUNTER

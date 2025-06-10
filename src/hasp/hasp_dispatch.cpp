@@ -1603,6 +1603,17 @@ void dispatch_service(const char*, const char* payload, uint8_t source)
 #endif
 }
 
+/************************CUSTOM COMMANDS************************/
+
+
+
+void dispatch_alarm_set(const char*, const char* payload, uint8_t source)
+{
+    LOG_INFO(TAG_MSGR, F(payload));
+    custom_alarm_set();
+}
+
+
 /******************************************* Commands builder *******************************************/
 
 static void dispatch_add_command(const char* p_cmdstr, void (*func)(const char*, const char*, uint8_t))
@@ -1656,6 +1667,9 @@ void dispatchSetup()
     // dispatch_add_command(PSTR("brightness"), dispatch_backlight_obsolete);
     // dispatch_add_command(PSTR("light"), dispatch_backlight_obsolete);
     dispatch_add_command(PSTR("wakeup"), dispatch_wakeup_obsolete); // used in CC
+    
+    // CUSTOM COMMANDS
+    dispatch_add_command(PSTR("alarm_set"), dispatch_alarm_set);
 
 #if HASP_USE_SPIFFS > 0 || HASP_USE_LITTLEFS > 0
 #if defined(ARDUINO_ARCH_ESP32)
