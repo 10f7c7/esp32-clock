@@ -25,7 +25,7 @@
 typedef struct {
    uint8_t minutes;
    uint8_t hours;
-   int days[7];
+   bool days[7];
 } cust_cron_expr;
 
 /* This function is called at boot */

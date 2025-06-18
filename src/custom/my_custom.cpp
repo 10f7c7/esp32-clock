@@ -49,7 +49,7 @@ std::map<CronId, cust_cron_expr> alarms;
 std::vector<String> alarmBtns  = {"p1b11", "p1b12", "p1b21", "p1b22", "p1b23", "p1b24", "p1b25", "p1b26", "p1b27"};
 uint8_t alarmHour              = 0;
 uint8_t alarmMinute            = 0;
-int alarmDays[7]               = {};
+bool alarmDays[7]               = {};
 std::vector<String> daysString = {"Sun ", "Mon ", "Tue ", "Wed ", "Thu ", "Fri ", "Sat "};
 
 TinyGPSPlus gps;
