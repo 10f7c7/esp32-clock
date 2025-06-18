@@ -42,7 +42,7 @@ SPIClass espSPI(ESPSPI_MOSI, ESPSPI_MISO, ESPSPI_SCLK); // SPI port where esp is
 char wifiSsid[MAX_SSID_LEN]           = WIFI_SSID;
 char wifiPassword[MAX_PASSPHRASE_LEN] = WIFI_PASSWORD;
 char wifiIpAddress[16]                = "";
-bool wifiEnabled                      = true;
+bool wifiEnabled                      = false;
 extern uint16_t network_reconnect_counter;
 
 // const byte DNS_PORT = 53;

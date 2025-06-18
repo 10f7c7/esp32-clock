@@ -63,7 +63,7 @@
 #define NTPSERVER2 "time.nist.gov"
 #define NTPSERVER3 "time.google.com"
 #define MYTZ                                                                                                           \
-    "EST5EDT,M3.2.0,M11.1.0" // A full list with possible timezones can be found here
+    "America/New_York" // A full list with possible timezones can be found here
                                  // https://gist.github.com/alwynallan/24d96091655391107939
 
 /***************************************************

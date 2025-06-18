@@ -14,7 +14,19 @@
 #include "CronAlarms.h"
 #include <sys/time.h>
 #include <vector>
+#include <algorithm>
+#include <map>
+#include "SD.h"
+#include "SPI.h"
+#include "timezone/timezone.h"
 #if defined(HASP_USE_CUSTOM) && HASP_USE_CUSTOM > 0
+
+
+typedef struct {
+   uint8_t minutes;
+   uint8_t hours;
+   int days[7];
+} cust_cron_expr;
 
 /* This function is called at boot */
 void custom_setup();
