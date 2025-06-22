@@ -1,8 +1,8 @@
 /* MIT License - Copyright (c) 2019-2024 Francis Van Roie
    For full license information read the LICENSE file in the project folder */
 
-// USAGE: - Copy this file and rename it to my_custom.cpp
-//        - Change false to true on line 9
+   // USAGE: - Copy this file and rename it to my_custom.cpp
+   //        - Change false to true on line 9
 
 #include "hasplib.h"
 
@@ -49,7 +49,7 @@ std::map<CronId, cust_cron_expr> alarms;
 std::vector<String> alarmBtns  = {"p1b11", "p1b12", "p1b21", "p1b22", "p1b23", "p1b24", "p1b25", "p1b26", "p1b27"};
 uint8_t alarmHour              = 0;
 uint8_t alarmMinute            = 0;
-bool alarmDays[7]               = {};
+bool alarmDays[7]              = {};
 std::vector<String> daysString = {"Sun ", "Mon ", "Tue ", "Wed ", "Thu ", "Fri ", "Sat "};
 
 TinyGPSPlus gps;
@@ -129,7 +129,11 @@ void crontest()
 
 void custom_clock_loop(void*)
 {
-    int i = 0;
+    // int i = 0;
+    digitalWrite(HR1, LOW);
+    digitalWrite(HR2, LOW);
+    digitalWrite(MIN1, HIGH);
+    digitalWrite(MIN2, LOW);
 
     while(1) {
         time_t rawtime;
@@ -139,50 +143,50 @@ void custom_clock_loop(void*)
         // setenv("TZ", "EST+5EDT,M3.2.0/2,M11.1.0/2", 1);
         // tzset();
         timeinfo = localtime(&rawtime);
-        // for(int i = 0; i < 4; i++) {
         // if(!(millis() % 100)) {
-        //     digitalWrite(SEC, timeinfo->tm_sec % 2);
-        // }
-        if(i == 0) {
-            digitalWrite(HR1, LOW);
-            digitalWrite(HR2, LOW);
-            digitalWrite(MIN1, HIGH);
-            digitalWrite(MIN2, LOW);
-            digitalWrite(ST_CP, LOW);
-            shiftOut(SHFT_DS, SH_CP, MSBFIRST, nums[(timeinfo->tm_min / 10) % 10]);
-            digitalWrite(ST_CP, HIGH);
-            i++;
-        } else if(i == 1) {
-            digitalWrite(HR1, HIGH);
-            digitalWrite(HR2, LOW);
-            digitalWrite(MIN1, LOW);
-            digitalWrite(MIN2, LOW);
-            digitalWrite(ST_CP, LOW);
-            shiftOut(SHFT_DS, SH_CP, MSBFIRST, nums[(timeinfo->tm_hour / 10) % 10]);
-            digitalWrite(ST_CP, HIGH);
-            i++;
-        } else if(i == 2) {
-            digitalWrite(HR1, LOW);
-            digitalWrite(HR2, HIGH);
-            digitalWrite(MIN1, LOW);
-            digitalWrite(MIN2, LOW);
-            digitalWrite(ST_CP, LOW);
-            shiftOut(SHFT_DS, SH_CP, MSBFIRST, nums[(timeinfo->tm_hour) % 10]);
-            digitalWrite(ST_CP, HIGH);
-            i++;
-        } else if(i == 3) {
-            digitalWrite(HR1, LOW);
-            digitalWrite(HR2, LOW);
-            digitalWrite(MIN1, LOW);
-            digitalWrite(MIN2, HIGH);
-            digitalWrite(ST_CP, LOW);
-            shiftOut(SHFT_DS, SH_CP, MSBFIRST, nums[(timeinfo->tm_min) % 10]);
-            digitalWrite(ST_CP, HIGH);
-            i = 0;
+            //     digitalWrite(SEC, timeinfo->tm_sec % 2);
+            // }
+        for (int i = 0; i < 4; i++) {
+            if(i == 0) {
+                // digitalWrite(HR1, LOW);
+                // digitalWrite(HR2, LOW);
+                digitalWrite(MIN1, HIGH);
+                digitalWrite(MIN2, LOW);
+                digitalWrite(ST_CP, LOW);
+                shiftOut(SHFT_DS, SH_CP, MSBFIRST, nums[(timeinfo->tm_min / 10) % 10]);
+                digitalWrite(ST_CP, HIGH);
+                // i++;
+            } else if(i == 1) {
+                digitalWrite(HR1, HIGH);
+                // digitalWrite(HR2, LOW);
+                digitalWrite(MIN1, LOW);
+                // digitalWrite(MIN2, LOW);
+                digitalWrite(ST_CP, LOW);
+                shiftOut(SHFT_DS, SH_CP, MSBFIRST, nums[(timeinfo->tm_hour / 10) % 10]);
+                digitalWrite(ST_CP, HIGH);
+                // i++;
+            } else if(i == 2) {
+                digitalWrite(HR1, LOW);
+                digitalWrite(HR2, HIGH);
+                // digitalWrite(MIN1, LOW);
+                // digitalWrite(MIN2, LOW);
+                digitalWrite(ST_CP, LOW);
+                shiftOut(SHFT_DS, SH_CP, MSBFIRST, nums[(timeinfo->tm_hour) % 10]);
+                digitalWrite(ST_CP, HIGH);
+                // i++;
+            } else if(i == 3) {
+                // digitalWrite(HR1, LOW);
+                digitalWrite(HR2, LOW);
+                // digitalWrite(MIN1, LOW);
+                digitalWrite(MIN2, HIGH);
+                digitalWrite(ST_CP, LOW);
+                shiftOut(SHFT_DS, SH_CP, MSBFIRST, nums[(timeinfo->tm_min) % 10]);
+                digitalWrite(ST_CP, HIGH);
+                // i = 0;
+            }
+            delay(2);
+            // Cron.delay(1);
         }
-        delay(2);
-        // Cron.delay(1);
-        // }
     }
 }
 
@@ -218,10 +222,6 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels)
     }
 }
 
-// void onError(int errZD, int errNative)
-// {
-//     fprintf(stderr, "ZD error: %s (0x%08X)\n", ZDGetErrorString(errZD), (unsigned)errNative);
-// }
 
 static void filesystem_write_file(const char* filename, const char* data, size_t len)
 {
@@ -247,32 +247,12 @@ void custom_setup()
     SPIClass spi = SPIClass(HSPI);
     spi.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
 
-    // SPI.begin()
-
     if(!SD.begin(SD_CS, spi)) {
         Serial.println("Card Mount Failed");
         // return;
     }
 
     gpsSerial.begin(GPS_BAUD, EspSoftwareSerial::SWSERIAL_8N1, GPS_RX, -1, false);
-
-    // time_t now = 1748439452;
-
-    // struct tm timeinfo;
-
-    // timeinfo.tm_hour = 12;
-    // timeinfo.tm_min  = 48;
-    // timeinfo.tm_year = 2018 - 1900;
-    // timeinfo.tm_mon  = 10;
-    // timeinfo.tm_mday = 15;
-    // // timeinfo.tm_hour = 14;
-    // // timeinfo.tm_min = 10;
-    // timeinfo.tm_sec = 10;
-    // time_t t        = mktime(&timeinfo);
-    // printf("Setting time: %s", asctime(&timeinfo));
-    // struct timeval nowTmp = {.tv_sec = t};
-
-    // settimeofday(&nowTmp, NULL);
 
     // clock init
     pinMode(ST_CP, OUTPUT);
@@ -288,41 +268,41 @@ void custom_setup()
     struct timeval nowTmp = {.tv_sec = epoch_time};
     settimeofday(&nowTmp, NULL);
 
-    alarmDays[2] = 1;
-    custom_alarm_set();
-    alarmDays[5] = 1;
-    custom_alarm_set();
+    // alarmDays[2] = 1;
+    // custom_alarm_set();
+    // alarmDays[5] = 1;
+    // custom_alarm_set();
 
-    // File alarmsFile = HASP_FS.open("/alarms.bin", "wr");
-    File alarmsFile = SD.open("/alarms.bin", FILE_WRITE);
-    LOG_TRACE(TAG_CUSTOM, F(D_FILE_SAVING), "/alarms.bin");
+    //// File alarmsFile = HASP_FS.open("/alarms.bin", "wr");
+    // File alarmsFile = SD.open("/alarms.bin", FILE_WRITE);
+    // LOG_TRACE(TAG_CUSTOM, F(D_FILE_SAVING), "/alarms.bin");
 
-    // alarmsFile.seek(0);
-    const uint8_t alarmSize = alarms.size();
-    alarmsFile.write(&alarmSize, sizeof(uint8_t));
+    //// alarmsFile.seek(0);
+    // const uint8_t alarmSize = alarms.size();
+    // alarmsFile.write(&alarmSize, sizeof(uint8_t));
 
-    alarmsFile.seek(sizeof(uint8_t));
+    // alarmsFile.seek(sizeof(uint8_t));
 
-    for(auto it = alarms.begin(); it != alarms.end(); ++it) {
-        alarmsFile.write(reinterpret_cast<unsigned char*>(&it->second), sizeof(cust_cron_expr));
-        alarmsFile.seek(sizeof(cust_cron_expr), SeekCur);
-    }
+    // for(auto it = alarms.begin(); it != alarms.end(); ++it) {
+    //     alarmsFile.write(reinterpret_cast<unsigned char*>(&it->second), sizeof(cust_cron_expr));
+    //     alarmsFile.seek(sizeof(cust_cron_expr), SeekCur);
+    // }
 
-    alarmsFile.close();
+    // alarmsFile.close();
 
-    File alarmsFile2 = SD.open("/alarms.bin");
+    // File alarmsFile2 = SD.open("/alarms.bin");
 
-    alarmsFile2.seek(0);
+    // alarmsFile2.seek(0);
 
-    char buf[20];
-    size_t bytesRead   = alarmsFile2.readBytes(buf, sizeof(buf));
-    uint8_t* readCount = (uint8_t*)buf;
+    // char buf[20];
+    // size_t bytesRead   = alarmsFile2.readBytes(buf, sizeof(buf));
+    // uint8_t* readCount = (uint8_t*)buf;
 
-    char realcount[20];
-    sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
-    LOG_VERBOSE(TAG_CUSTOM, realcount);
+    // char realcount[20];
+    // sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
+    // LOG_VERBOSE(TAG_CUSTOM, realcount);
 
-    alarmsFile2.close();
+    // alarmsFile2.close();
 
     if(latitude && longitude) {
         LOG_INFO(TAG_CUSTOM, "using gps coords");
@@ -331,15 +311,6 @@ void custom_setup()
         setenv("TZ", "EST+5EDT,M3.2.0/2,M11.1.0/2", 1);
     }
     tzset();
-
-    // setenv("TZ", "America/New_York", 1);
-    // tzset();
-
-    // timeval epoch      = {epoch_time, 0};
-    // const timeval* tv  = &epoch;
-    // timezone utc       = {0, 0};
-    // const timezone* tz = &utc;
-    // settimeofday(tv, tz);
 
     // SET UP COMMANDS
     filesystem_write_file("/alarm_log.cmd", HASP_ALARM_LOG_CMD, strlen(HASP_ALARM_LOG_CMD));
@@ -399,22 +370,22 @@ void custom_every_5seconds()
 bool custom_pin_in_use(uint8_t pin)
 {
     switch(pin) {
-        case ST_CP:
-        case SH_CP:
-        case SHFT_DS:
-        case HR1:
-        case HR2:
-        case MIN1:
-        case MIN2:
-        case SEC:
-        case GPS_RX:
-        case SD_MISO:
-        case SD_SCLK:
-        case SD_MOSI:
-        case SD_CS:
-            return true;
-        default:
-            return false;
+    case ST_CP:
+    case SH_CP:
+    case SHFT_DS:
+    case HR1:
+    case HR2:
+    case MIN1:
+    case MIN2:
+    case SEC:
+    case GPS_RX:
+    case SD_MISO:
+    case SD_SCLK:
+    case SD_MOSI:
+    case SD_CS:
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -536,28 +507,28 @@ void custom_alarm_set()
 
     char box[200];
     sprintf(box,
-            "{\"page\":2,\"id\":%i,\"parentid\":10,\"obj\":\"obj\",\"x\":5,\"y\":%i,\"w\":220,\"h\":56,\"click\":0,"
-            "\"bg_color\":\"Gray\",\"bg_grad_dir\":0,\"border_side\":0}",
-            boxId, (5 + (60 * id)));
+        "{\"page\":2,\"id\":%i,\"parentid\":10,\"obj\":\"obj\",\"x\":5,\"y\":%i,\"w\":220,\"h\":56,\"click\":0,"
+        "\"bg_color\":\"Gray\",\"bg_grad_dir\":0,\"border_side\":0}",
+        boxId, (5 + (60 * id)));
 
     // if(alarmHour.length() < 2) alarmHour = "0" + alarmHour;
     // if(alarmMinute.length() < 2) alarmMinute = "0" + alarmMinute;
 
     char time[200];
     sprintf(time,
-            "{\"page\":2,\"id\":%i0,\"parentid\":%i,\"obj\":\"label\",\"x\":10,\"y\":0,\"w\":150,\"h\":50,\"text\":\"%0*d:%0*d\",\"text_font\":32}",
+        "{\"page\":2,\"id\":%i0,\"parentid\":%i,\"obj\":\"label\",\"x\":10,\"y\":0,\"w\":150,\"h\":50,\"text\":\"%0*d:%0*d\",\"text_font\":32}",
             boxId, boxId,2, alarmHour,2, alarmMinute);
 
     char day[200];
     sprintf(day,
-            "{\"page\":2,\"id\":%i1,\"parentid\":%i,\"obj\":\"label\",\"x\":10,\"y\":32,\"w\":150,\"h\":50,\"text\":\"%"
-            "s\"}",
-            boxId, boxId, alarmDaysStrAbbr);
+        "{\"page\":2,\"id\":%i1,\"parentid\":%i,\"obj\":\"label\",\"x\":10,\"y\":32,\"w\":150,\"h\":50,\"text\":\"%"
+        "s\"}",
+        boxId, boxId, alarmDaysStrAbbr);
 
     char en[200];
     sprintf(en,
-            "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":130,\"y\":13,\"w\":70,\"h\":30,\"val\":1}",
-            boxId, boxId);
+        "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":130,\"y\":13,\"w\":70,\"h\":30,\"val\":1}",
+        boxId, boxId);
 
     uint8_t pagenum = haspPages.get();
 
