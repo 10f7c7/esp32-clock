@@ -42,6 +42,12 @@ float longitude;
 #define SD_MOSI 11
 #define SD_CS 10
 
+#define I2S_DOUT      2
+#define I2S_BCLK      1
+#define I2S_LRC       8
+
+#define SNOOZE_BTN 45
+
 bool clockTaskFinished = false;
 
 // cron_job* jobs[];
@@ -132,7 +138,7 @@ void custom_clock_loop(void*)
     // int i = 0;
     digitalWrite(HR1, LOW);
     digitalWrite(HR2, LOW);
-    digitalWrite(MIN1, HIGH);
+    digitalWrite(MIN1, LOW);
     digitalWrite(MIN2, LOW);
 
     while(1) {
@@ -263,6 +269,7 @@ void custom_setup()
     pinMode(MIN1, OUTPUT);
     pinMode(MIN2, OUTPUT);
     pinMode(SEC, OUTPUT);
+    pinMode(SNOOZE_BTN, INPUT);
 
     time_t epoch_time     = GPSTime();
     struct timeval nowTmp = {.tv_sec = epoch_time};
@@ -304,12 +311,12 @@ void custom_setup()
 
     // alarmsFile2.close();
 
-    if(latitude && longitude) {
-        LOG_INFO(TAG_CUSTOM, "using gps coords");
-        setenv("TZ", timezone_find(latitude, longitude).c_str(), 1);
-    } else {
+    // if(latitude && longitude) {
+    //     LOG_INFO(TAG_CUSTOM, "using gps coords");
+    //     setenv("TZ", timezone_find(latitude, longitude).c_str(), 1);
+    // } else {
         setenv("TZ", "EST+5EDT,M3.2.0/2,M11.1.0/2", 1);
-    }
+    // }
     tzset();
 
     // SET UP COMMANDS
@@ -319,9 +326,10 @@ void custom_setup()
 
     xTaskCreatePinnedToCore(custom_clock_loop, "clockFace", 6000, NULL, 0, NULL, 1);
 
-    // SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);
-    // SD.begin();
-    // listDir(SD, "/", 0);
+    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);
+    SD.begin();
+    // play();
+
 
     // ZDSetErrorHandler(onError);
 
@@ -354,6 +362,13 @@ void custom_setup()
 void custom_loop()
 {
     Cron.delay();
+
+    bool snooze = digitalRead(SNOOZE_BTN);
+
+    if (snooze) {
+        LOG_INFO(TAG_CUSTOM, "snoozed");
+    }
+
 }
 
 void custom_every_second()
@@ -383,6 +398,7 @@ bool custom_pin_in_use(uint8_t pin)
     case SD_SCLK:
     case SD_MOSI:
     case SD_CS:
+    case SNOOZE_BTN:
         return true;
     default:
         return false;

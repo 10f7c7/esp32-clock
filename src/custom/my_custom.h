@@ -19,6 +19,7 @@
 #include "SD.h"
 #include "SPI.h"
 #include "timezone/timezone.h"
+#include "audio.h"
 #if defined(HASP_USE_CUSTOM) && HASP_USE_CUSTOM > 0
 
 
