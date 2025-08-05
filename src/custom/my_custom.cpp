@@ -55,7 +55,7 @@ std::map<CronId, cust_cron_expr> alarms;
 std::vector<String> alarmBtns  = {"p1b11", "p1b12", "p1b21", "p1b22", "p1b23", "p1b24", "p1b25", "p1b26", "p1b27"};
 uint8_t alarmHour              = 0;
 uint8_t alarmMinute            = 0;
-bool alarmDays[7]              = {};
+bool alarmDays[7]              = {0,0,0,0,0,0,0};
 std::vector<String> daysString = {"Sun ", "Mon ", "Tue ", "Wed ", "Thu ", "Fri ", "Sat "};
 
 TinyGPSPlus gps;
@@ -280,11 +280,11 @@ void custom_setup()
     // alarmDays[5] = 1;
     // custom_alarm_set();
 
-    //// File alarmsFile = HASP_FS.open("/alarms.bin", "wr");
+    // // File alarmsFile = HASP_FS.open("/alarms.bin", "wr");
     // File alarmsFile = SD.open("/alarms.bin", FILE_WRITE);
     // LOG_TRACE(TAG_CUSTOM, F(D_FILE_SAVING), "/alarms.bin");
 
-    //// alarmsFile.seek(0);
+    // //// alarmsFile.seek(0);
     // const uint8_t alarmSize = alarms.size();
     // alarmsFile.write(&alarmSize, sizeof(uint8_t));
 
@@ -297,19 +297,42 @@ void custom_setup()
 
     // alarmsFile.close();
 
-    // File alarmsFile2 = SD.open("/alarms.bin");
+    File alarmsFile2 = SD.open("/alarms.bin");
 
-    // alarmsFile2.seek(0);
+    size_t posRead = 0;
 
-    // char buf[20];
-    // size_t bytesRead   = alarmsFile2.readBytes(buf, sizeof(buf));
-    // uint8_t* readCount = (uint8_t*)buf;
+    alarmsFile2.seek(posRead);
 
-    // char realcount[20];
-    // sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
-    // LOG_VERBOSE(TAG_CUSTOM, realcount);
+    char buf[20];
+    size_t bytesRead   = alarmsFile2.readBytes(buf, sizeof(buf));
+    uint8_t* readCount = (uint8_t*)buf;
+    posRead += sizeof(uint8_t);
+    alarmsFile2.seek(posRead);
 
-    // alarmsFile2.close();
+    char realcount[20];
+    sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
+    LOG_VERBOSE(TAG_CUSTOM, realcount);
+
+    for (int i = 0; i < *readCount; i++) {
+        char bufAlarm[sizeof(cust_cron_expr)];
+        size_t bytesRead   = alarmsFile2.readBytes(bufAlarm, sizeof(bufAlarm));
+        cust_cron_expr* alarmReed = (cust_cron_expr*)bufAlarm;
+        Serial.printf("ALARM %i TIME: %i:%i\n",i,alarmReed->hours,alarmReed->minutes);
+        Serial.printf("ALARM %i DAY: S:%iM:%iT:%iW:%iT:%iF:%iS:%i\n",i, alarmReed->days[0],alarmReed->days[1],alarmReed->days[2],alarmReed->days[3],alarmReed->days[4],alarmReed->days[5],alarmReed->days[6]);
+        posRead += sizeof(cust_cron_expr);
+        alarmsFile2.seek(posRead);
+
+        alarmMinute = alarmReed->minutes;
+        alarmHour = alarmReed->hours;
+        for (int k = 0; k < 7; k++) {
+            alarmDays[k] = alarmReed->days[k];
+        }
+        // memcpy(alarmReed->days, alarmDays, sizeof(alarmDays));
+        custom_alarm_set();
+
+    }
+
+    alarmsFile2.close();
 
     // if(latitude && longitude) {
     //     LOG_INFO(TAG_CUSTOM, "using gps coords");
