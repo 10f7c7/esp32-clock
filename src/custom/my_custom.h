@@ -56,7 +56,9 @@ void custom_topic_payload(const char* topic, const char* payload, uint8_t source
 /* https://github.com/HASwitchPlate/openHASP/issues/611 */
 void custom_state_subtopic(const char* subtopic, const char* payload);
 
-void custom_alarm_set();
+void custom_write_alarms();
+
+void custom_alarm_set(const bool init = false);
 
 #endif // HASP_USE_CUSTOM
 

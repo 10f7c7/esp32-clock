@@ -19,6 +19,9 @@
     "run /alarm_log.cmd\nalarm_set\njsonl {\"page\":0,\"id\":239,\"obj\":\"msgbox\",\"text\":\"Alarm "                 \
     "Set\",\"auto_close\":2000}"
 #define HASP_BOOT_CMD "config/hasp {'theme':5}"
+#define HASP_IDLE_SHORT_CMD "backlight 0\nbacklight 0\nbacklight 0"
+#define HASP_IDLE_LONG_CMD ""
+#define HASP_IDLE_OFF_CMD "backlight 255\nbacklight 255\nbacklight 255"
 
 #define ST_CP 17
 #define SH_CP 16
@@ -245,6 +248,8 @@ static void filesystem_write_file(const char* filename, const char* data, size_t
     }
 }
 
+
+
 void custom_setup()
 {
     // Initialization code here
@@ -281,21 +286,6 @@ void custom_setup()
     // custom_alarm_set();
 
     // // File alarmsFile = HASP_FS.open("/alarms.bin", "wr");
-    // File alarmsFile = SD.open("/alarms.bin", FILE_WRITE);
-    // LOG_TRACE(TAG_CUSTOM, F(D_FILE_SAVING), "/alarms.bin");
-
-    // //// alarmsFile.seek(0);
-    // const uint8_t alarmSize = alarms.size();
-    // alarmsFile.write(&alarmSize, sizeof(uint8_t));
-
-    // alarmsFile.seek(sizeof(uint8_t));
-
-    // for(auto it = alarms.begin(); it != alarms.end(); ++it) {
-    //     alarmsFile.write(reinterpret_cast<unsigned char*>(&it->second), sizeof(cust_cron_expr));
-    //     alarmsFile.seek(sizeof(cust_cron_expr), SeekCur);
-    // }
-
-    // alarmsFile.close();
 
     File alarmsFile2 = SD.open("/alarms.bin");
 
@@ -319,8 +309,8 @@ void custom_setup()
         cust_cron_expr* alarmReed = (cust_cron_expr*)bufAlarm;
         Serial.printf("ALARM %i TIME: %i:%i\n",i,alarmReed->hours,alarmReed->minutes);
         Serial.printf("ALARM %i DAY: S:%iM:%iT:%iW:%iT:%iF:%iS:%i\n",i, alarmReed->days[0],alarmReed->days[1],alarmReed->days[2],alarmReed->days[3],alarmReed->days[4],alarmReed->days[5],alarmReed->days[6]);
-        posRead += sizeof(cust_cron_expr);
-        alarmsFile2.seek(posRead);
+        alarmsFile2.seek(sizeof(cust_cron_expr), SeekCur);
+
 
         alarmMinute = alarmReed->minutes;
         alarmHour = alarmReed->hours;
@@ -328,11 +318,13 @@ void custom_setup()
             alarmDays[k] = alarmReed->days[k];
         }
         // memcpy(alarmReed->days, alarmDays, sizeof(alarmDays));
-        custom_alarm_set();
+        custom_alarm_set(true);
 
     }
 
     alarmsFile2.close();
+
+    SD.end();
 
     // if(latitude && longitude) {
     //     LOG_INFO(TAG_CUSTOM, "using gps coords");
@@ -346,11 +338,14 @@ void custom_setup()
     filesystem_write_file("/alarm_log.cmd", HASP_ALARM_LOG_CMD, strlen(HASP_ALARM_LOG_CMD));
     filesystem_write_file("/alarm_set.cmd", HASP_ALARM_SET_CMD, strlen(HASP_ALARM_SET_CMD));
     filesystem_write_file("/boot.cmd", HASP_BOOT_CMD, strlen(HASP_BOOT_CMD));
+    filesystem_write_file("/idle_short.cmd", HASP_IDLE_SHORT_CMD, strlen(HASP_IDLE_SHORT_CMD));
+    filesystem_write_file("/idle_long.cmd", HASP_IDLE_LONG_CMD, strlen(HASP_IDLE_LONG_CMD));
+    filesystem_write_file("/idle_off.cmd", HASP_IDLE_OFF_CMD, strlen(HASP_IDLE_OFF_CMD));
 
     xTaskCreatePinnedToCore(custom_clock_loop, "clockFace", 6000, NULL, 0, NULL, 1);
 
-    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);
-    SD.begin();
+    // SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);
+    // SD.begin();
     // play();
 
 
@@ -498,7 +493,40 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
     // }
 }
 
-void custom_alarm_set()
+
+void custom_write_alarms() {
+    SPIClass spi = SPIClass(HSPI);
+    spi.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
+
+    if (!SD.begin(SD_CS, spi)) {
+        Serial.println("Card Mount Failed");
+        // return;
+    }
+
+    File alarmsFile = SD.open("/alarms.bin", FILE_WRITE);
+    LOG_TRACE(TAG_CUSTOM, F(D_FILE_SAVING), "/alarms.bin");
+
+    alarmsFile.seek(0);
+    const uint8_t alarmSize = alarms.size();
+    char buffer[500];
+    sprintf(buffer, "SIZE OF SAVING: %i", alarmSize);
+    LOG_TRACE(TAG_CUSTOM, buffer);
+
+    alarmsFile.write(&alarmSize, sizeof(uint8_t));
+
+    alarmsFile.seek(sizeof(uint8_t));
+
+    for (auto it = alarms.begin(); it != alarms.end(); ++it) {
+        alarmsFile.write(reinterpret_cast<unsigned char*>(&it->second), sizeof(cust_cron_expr));
+        alarmsFile.seek(sizeof(cust_cron_expr), SeekCur);
+    }
+
+    alarmsFile.close();
+    SD.end();
+}
+
+
+void custom_alarm_set(const bool init)
 {
     int days            = 0;
     String alarmDaysStr = "";
@@ -566,7 +594,7 @@ void custom_alarm_set()
 
     char en[200];
     sprintf(en,
-        "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":130,\"y\":13,\"w\":70,\"h\":30,\"val\":1}",
+        "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":145,\"y\":13,\"w\":50,\"h\":30,\"val\":1}",
         boxId, boxId);
 
     uint8_t pagenum = haspPages.get();
@@ -599,6 +627,9 @@ void custom_alarm_set()
         hasp_new_object(enJson.as<JsonObject>(), pagenum);
     } else {
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
+    }
+    if (!init) {
+        custom_write_alarms();
     }
 }
 
