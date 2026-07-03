@@ -453,6 +453,7 @@ static void wifiReconnect(void)
 
 void wifiSetup()
 {
+    return;
 #if defined(STM32F4xx)
     // Temp ESP reset function
     pinMode(ESPSPI_RST, OUTPUT);
@@ -517,31 +518,32 @@ void wifiSetup()
 
 bool wifiEvery5Seconds()
 {
-	static uint8_t disconnectionPeriod = 0;	// WiFi disconnection period counter
+    return 0;
+    static uint8_t disconnectionPeriod = 0; // WiFi disconnection period counter
 
 #if defined(STM32F4xx)
-	if(wifiShowAP()) { // no ssid is set yet wait for user on-screen input
-		return false;
-	}
+    if(wifiShowAP()) { // no ssid is set yet wait for user on-screen input
+        return false;
+    }
 #else
-	if(WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
-		LOG_DEBUG(TAG_WIFI, F("5sec mode AP %d"), WiFi.getMode());
-		return false;
-	}
+    if(WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+        LOG_DEBUG(TAG_WIFI, F("5sec mode AP %d"), WiFi.getMode());
+        return false;
+    }
 #endif
 
-	if(WiFi.status() == WL_CONNECTED && WiFi.localIP() > 0) {
-		disconnectionPeriod = 0;		    // Reset the counter if connection was established
-		return true;
-	}
+    if(WiFi.status() == WL_CONNECTED && WiFi.localIP() > 0) {
+        disconnectionPeriod = 0; // Reset the counter if connection was established
+        return true;
+    }
 
-	if(WiFi.status() != WL_CONNECTED) {		// If WiFi disconnected...
-		if(++disconnectionPeriod >= 6) { 	// If 30 seconds have passed since the disconnection...
-			disconnectionPeriod = 0;	    // Restart timeout period
-			wifiReconnect();		        // Reconnect to WiFi
-		}
-	}
-	return false;
+    if(WiFi.status() != WL_CONNECTED) {  // If WiFi disconnected...
+        if(++disconnectionPeriod >= 6) { // If 30 seconds have passed since the disconnection...
+            disconnectionPeriod = 0;     // Restart timeout period
+            wifiReconnect();             // Reconnect to WiFi
+        }
+    }
+    return false;
 }
 
 bool wifiValidateSsid(const char* ssid, const char* pass)
