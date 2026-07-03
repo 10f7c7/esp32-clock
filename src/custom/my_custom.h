@@ -20,13 +20,14 @@
 #include "SPI.h"
 #include "timezone/timezone.h"
 #include "audio.h"
+#include "modfunc.h"
 #if defined(HASP_USE_CUSTOM) && HASP_USE_CUSTOM > 0
 
-
-typedef struct {
-   uint8_t minutes;
-   uint8_t hours;
-   bool days[7];
+typedef struct
+{
+    uint8_t minutes;
+    uint8_t hours;
+    bool days[7];
 } cust_cron_expr;
 
 /* This function is called at boot */

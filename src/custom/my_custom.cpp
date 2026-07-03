@@ -1,8 +1,8 @@
 /* MIT License - Copyright (c) 2019-2024 Francis Van Roie
    For full license information read the LICENSE file in the project folder */
 
-   // USAGE: - Copy this file and rename it to my_custom.cpp
-   //        - Change false to true on line 9
+// USAGE: - Copy this file and rename it to my_custom.cpp
+//        - Change false to true on line 9
 
 #include "hasplib.h"
 
@@ -18,23 +18,23 @@
 #define HASP_ALARM_SET_CMD                                                                                             \
     "run /alarm_log.cmd\nalarm_set\njsonl {\"page\":0,\"id\":239,\"obj\":\"msgbox\",\"text\":\"Alarm "                 \
     "Set\",\"auto_close\":2000}"
-#define HASP_BOOT_CMD "config/hasp {'theme':5}"
+#define HASP_BOOT_CMD       "config/hasp {'theme':5}"
 #define HASP_IDLE_SHORT_CMD "backlight 0\nbacklight 0\nbacklight 0"
-#define HASP_IDLE_LONG_CMD ""
-#define HASP_IDLE_OFF_CMD "backlight 255\nbacklight 255\nbacklight 255"
+#define HASP_IDLE_LONG_CMD  ""
+#define HASP_IDLE_OFF_CMD   "backlight 255\nbacklight 255\nbacklight 255"
 
-#define ST_CP 17
-#define SH_CP 16
-#define SHFT_DS 15
-#define HR1 7
-#define HR2 6
-#define MIN1 5
-#define MIN2 4
-#define SEC 18
+#define ST_CP     17
+#define SH_CP     16
+#define SHFT_DS   15
+#define HR1       7
+#define HR2       6
+#define MIN1      5
+#define MIN2      4
+#define SEC       18
 #define MUX_SPEED 1
 unsigned long prev_mux = 0;
 
-#define GPS_RX 40
+#define GPS_RX   40
 #define GPS_BAUD 9600
 EspSoftwareSerial::UART gpsSerial;
 float latitude;
@@ -43,11 +43,11 @@ float longitude;
 #define SD_MISO 13
 #define SD_SCLK 12
 #define SD_MOSI 11
-#define SD_CS 10
+#define SD_CS   10
 
-#define I2S_DOUT      2
-#define I2S_BCLK      1
-#define I2S_LRC       8
+#define I2S_DOUT 2
+#define I2S_BCLK 1
+#define I2S_LRC  8
 
 #define SNOOZE_BTN 45
 
@@ -58,7 +58,7 @@ std::map<CronId, cust_cron_expr> alarms;
 std::vector<String> alarmBtns  = {"p1b11", "p1b12", "p1b21", "p1b22", "p1b23", "p1b24", "p1b25", "p1b26", "p1b27"};
 uint8_t alarmHour              = 0;
 uint8_t alarmMinute            = 0;
-bool alarmDays[7]              = {0,0,0,0,0,0,0};
+bool alarmDays[7]              = {0, 0, 0, 0, 0, 0, 0};
 std::vector<String> daysString = {"Sun ", "Mon ", "Tue ", "Wed ", "Thu ", "Fri ", "Sat "};
 
 TinyGPSPlus gps;
@@ -118,6 +118,8 @@ time_t GPSTime()
             //                         String(gps.date.day()) + "," + String(gps.time.hour()) + ":" +
             //                         String(gps.time.minute()) + ":" + String(gps.time.second()));
             // gpsSerial.end();
+            struct timeval nowTmp = {.tv_sec = t_of_day};
+            settimeofday(&nowTmp, NULL);
             return t_of_day;
         }
     }
@@ -133,6 +135,7 @@ time_t GPSTime()
 
 void crontest()
 {
+    xTaskCreatePinnedToCore(play, "sound", 6000, NULL, 0, NULL, 1);
     LOG_VERBOSE(TAG_CUSTOM, "this is alarming");
 }
 
@@ -153,9 +156,9 @@ void custom_clock_loop(void*)
         // tzset();
         timeinfo = localtime(&rawtime);
         // if(!(millis() % 100)) {
-            //     digitalWrite(SEC, timeinfo->tm_sec % 2);
-            // }
-        for (int i = 0; i < 4; i++) {
+        //     digitalWrite(SEC, timeinfo->tm_sec % 2);
+        // }
+        for(int i = 0; i < 4; i++) {
             if(i == 0) {
                 // digitalWrite(HR1, LOW);
                 // digitalWrite(HR2, LOW);
@@ -199,39 +202,6 @@ void custom_clock_loop(void*)
     }
 }
 
-void listDir(fs::FS& fs, const char* dirname, uint8_t levels)
-{
-    Serial.printf("Listing directory: %s\n", dirname);
-
-    File root = fs.open(dirname);
-    if(!root) {
-        Serial.println("Failed to open directory");
-        return;
-    }
-    if(!root.isDirectory()) {
-        Serial.println("Not a directory");
-        return;
-    }
-
-    File file = root.openNextFile();
-    while(file) {
-        if(file.isDirectory()) {
-            Serial.print("  DIR : ");
-            Serial.println(file.name());
-            if(levels) {
-                listDir(fs, file.path(), levels - 1);
-            }
-        } else {
-            Serial.print("  FILE: ");
-            Serial.print(file.name());
-            Serial.print("  SIZE: ");
-            Serial.println(file.size());
-        }
-        file = root.openNextFile();
-    }
-}
-
-
 static void filesystem_write_file(const char* filename, const char* data, size_t len)
 {
     if(HASP_FS.exists(filename)) return;
@@ -248,22 +218,19 @@ static void filesystem_write_file(const char* filename, const char* data, size_t
     }
 }
 
-
-
 void custom_setup()
 {
     // Initialization code here
     randomSeed(millis());
 
+    // SD BEGIN
     SPIClass spi = SPIClass(HSPI);
     spi.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
 
     if(!SD.begin(SD_CS, spi)) {
         Serial.println("Card Mount Failed");
-        // return;
     }
-
-    gpsSerial.begin(GPS_BAUD, EspSoftwareSerial::SWSERIAL_8N1, GPS_RX, -1, false);
+    // SD END
 
     // clock init
     pinMode(ST_CP, OUTPUT);
@@ -276,9 +243,11 @@ void custom_setup()
     pinMode(SEC, OUTPUT);
     pinMode(SNOOZE_BTN, INPUT);
 
-    time_t epoch_time     = GPSTime();
-    struct timeval nowTmp = {.tv_sec = epoch_time};
-    settimeofday(&nowTmp, NULL);
+    gpsSerial.begin(GPS_BAUD, EspSoftwareSerial::SWSERIAL_8N1, GPS_RX, -1, false);
+
+    time_t epoch_time = GPSTime();
+    // struct timeval nowTmp = {.tv_sec = epoch_time};
+    // settimeofday(&nowTmp, NULL);
 
     // alarmDays[2] = 1;
     // custom_alarm_set();
@@ -303,23 +272,23 @@ void custom_setup()
     sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
     LOG_VERBOSE(TAG_CUSTOM, realcount);
 
-    for (int i = 0; i < *readCount; i++) {
+    for(int i = 0; i < *readCount; i++) {
         char bufAlarm[sizeof(cust_cron_expr)];
-        size_t bytesRead   = alarmsFile2.readBytes(bufAlarm, sizeof(bufAlarm));
+        size_t bytesRead          = alarmsFile2.readBytes(bufAlarm, sizeof(bufAlarm));
         cust_cron_expr* alarmReed = (cust_cron_expr*)bufAlarm;
-        Serial.printf("ALARM %i TIME: %i:%i\n",i,alarmReed->hours,alarmReed->minutes);
-        Serial.printf("ALARM %i DAY: S:%iM:%iT:%iW:%iT:%iF:%iS:%i\n",i, alarmReed->days[0],alarmReed->days[1],alarmReed->days[2],alarmReed->days[3],alarmReed->days[4],alarmReed->days[5],alarmReed->days[6]);
+        Serial.printf("ALARM %i TIME: %i:%i\n", i, alarmReed->hours, alarmReed->minutes);
+        Serial.printf("ALARM %i DAY: S:%iM:%iT:%iW:%iT:%iF:%iS:%i\n", i, alarmReed->days[0], alarmReed->days[1],
+                      alarmReed->days[2], alarmReed->days[3], alarmReed->days[4], alarmReed->days[5],
+                      alarmReed->days[6]);
         alarmsFile2.seek(sizeof(cust_cron_expr), SeekCur);
 
-
         alarmMinute = alarmReed->minutes;
-        alarmHour = alarmReed->hours;
-        for (int k = 0; k < 7; k++) {
+        alarmHour   = alarmReed->hours;
+        for(int k = 0; k < 7; k++) {
             alarmDays[k] = alarmReed->days[k];
         }
         // memcpy(alarmReed->days, alarmDays, sizeof(alarmDays));
         custom_alarm_set(true);
-
     }
 
     alarmsFile2.close();
@@ -330,7 +299,7 @@ void custom_setup()
     //     LOG_INFO(TAG_CUSTOM, "using gps coords");
     //     setenv("TZ", timezone_find(latitude, longitude).c_str(), 1);
     // } else {
-        setenv("TZ", "EST+5EDT,M3.2.0/2,M11.1.0/2", 1);
+    setenv("TZ", "EST+5EDT,M3.2.0/2,M11.1.0/2", 1);
     // }
     tzset();
 
@@ -347,7 +316,6 @@ void custom_setup()
     // SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);
     // SD.begin();
     // play();
-
 
     // ZDSetErrorHandler(onError);
 
@@ -383,10 +351,12 @@ void custom_loop()
 
     bool snooze = digitalRead(SNOOZE_BTN);
 
-    if (snooze) {
+    if(snooze) {
+        // play audio
+
+        // xTaskCreatePinnedToCore(play, "sound", 6000, NULL, 0, NULL, 1);
         LOG_INFO(TAG_CUSTOM, "snoozed");
     }
-
 }
 
 void custom_every_second()
@@ -403,23 +373,23 @@ void custom_every_5seconds()
 bool custom_pin_in_use(uint8_t pin)
 {
     switch(pin) {
-    case ST_CP:
-    case SH_CP:
-    case SHFT_DS:
-    case HR1:
-    case HR2:
-    case MIN1:
-    case MIN2:
-    case SEC:
-    case GPS_RX:
-    case SD_MISO:
-    case SD_SCLK:
-    case SD_MOSI:
-    case SD_CS:
-    case SNOOZE_BTN:
-        return true;
-    default:
-        return false;
+        case ST_CP:
+        case SH_CP:
+        case SHFT_DS:
+        case HR1:
+        case HR2:
+        case MIN1:
+        case MIN2:
+        case SEC:
+        case GPS_RX:
+        case SD_MISO:
+        case SD_SCLK:
+        case SD_MOSI:
+        case SD_CS:
+        case SNOOZE_BTN:
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -493,12 +463,12 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
     // }
 }
 
-
-void custom_write_alarms() {
+void custom_write_alarms()
+{
     SPIClass spi = SPIClass(HSPI);
     spi.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
 
-    if (!SD.begin(SD_CS, spi)) {
+    if(!SD.begin(SD_CS, spi)) {
         Serial.println("Card Mount Failed");
         // return;
     }
@@ -516,7 +486,7 @@ void custom_write_alarms() {
 
     alarmsFile.seek(sizeof(uint8_t));
 
-    for (auto it = alarms.begin(); it != alarms.end(); ++it) {
+    for(auto it = alarms.begin(); it != alarms.end(); ++it) {
         alarmsFile.write(reinterpret_cast<unsigned char*>(&it->second), sizeof(cust_cron_expr));
         alarmsFile.seek(sizeof(cust_cron_expr), SeekCur);
     }
@@ -524,7 +494,6 @@ void custom_write_alarms() {
     alarmsFile.close();
     SD.end();
 }
-
 
 void custom_alarm_set(const bool init)
 {
@@ -574,28 +543,29 @@ void custom_alarm_set(const bool init)
 
     char box[200];
     sprintf(box,
-        "{\"page\":2,\"id\":%i,\"parentid\":10,\"obj\":\"obj\",\"x\":5,\"y\":%i,\"w\":220,\"h\":56,\"click\":0,"
-        "\"bg_color\":\"Gray\",\"bg_grad_dir\":0,\"border_side\":0}",
-        boxId, (5 + (60 * id)));
+            "{\"page\":2,\"id\":%i,\"parentid\":10,\"obj\":\"obj\",\"x\":5,\"y\":%i,\"w\":220,\"h\":56,\"click\":0,"
+            "\"bg_color\":\"Gray\",\"bg_grad_dir\":0,\"border_side\":0}",
+            boxId, (5 + (60 * id)));
 
     // if(alarmHour.length() < 2) alarmHour = "0" + alarmHour;
     // if(alarmMinute.length() < 2) alarmMinute = "0" + alarmMinute;
 
     char time[200];
     sprintf(time,
-        "{\"page\":2,\"id\":%i0,\"parentid\":%i,\"obj\":\"label\",\"x\":10,\"y\":0,\"w\":150,\"h\":50,\"text\":\"%0*d:%0*d\",\"text_font\":32}",
-            boxId, boxId,2, alarmHour,2, alarmMinute);
+            "{\"page\":2,\"id\":%i0,\"parentid\":%i,\"obj\":\"label\",\"x\":10,\"y\":0,\"w\":150,\"h\":50,\"text\":\"%"
+            "0*d:%0*d\",\"text_font\":32}",
+            boxId, boxId, 2, alarmHour, 2, alarmMinute);
 
     char day[200];
     sprintf(day,
-        "{\"page\":2,\"id\":%i1,\"parentid\":%i,\"obj\":\"label\",\"x\":10,\"y\":32,\"w\":150,\"h\":50,\"text\":\"%"
-        "s\"}",
-        boxId, boxId, alarmDaysStrAbbr);
+            "{\"page\":2,\"id\":%i1,\"parentid\":%i,\"obj\":\"label\",\"x\":10,\"y\":32,\"w\":150,\"h\":50,\"text\":\"%"
+            "s\"}",
+            boxId, boxId, alarmDaysStrAbbr);
 
     char en[200];
     sprintf(en,
-        "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":145,\"y\":13,\"w\":50,\"h\":30,\"val\":1}",
-        boxId, boxId);
+            "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":145,\"y\":13,\"w\":50,\"h\":30,\"val\":1}",
+            boxId, boxId);
 
     uint8_t pagenum = haspPages.get();
 
@@ -628,7 +598,7 @@ void custom_alarm_set(const bool init)
     } else {
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
     }
-    if (!init) {
+    if(!init) {
         custom_write_alarms();
     }
 }
