@@ -1,4 +1,3 @@
 
 
-
-void play();
+void play(void*);
