@@ -19,9 +19,9 @@
     "run /alarm_log.cmd\nalarm_set\njsonl {\"page\":0,\"id\":239,\"obj\":\"msgbox\",\"text\":\"Alarm "                 \
     "Set\",\"auto_close\":2000}"
 #define HASP_BOOT_CMD       "config/hasp {'theme':5}"
-#define HASP_IDLE_SHORT_CMD "backlight 0\nbacklight 0\nbacklight 0"
+#define HASP_IDLE_SHORT_CMD "backlight 0\nbacklight 0\nbacklight 0\n enable_clock"
 #define HASP_IDLE_LONG_CMD  ""
-#define HASP_IDLE_OFF_CMD   "backlight 255\nbacklight 255\nbacklight 255"
+#define HASP_IDLE_OFF_CMD   "disable_clock\nbacklight 255\nbacklight 255\nbacklight 255"
 
 #define ST_CP     17
 #define SH_CP     16
@@ -52,6 +52,7 @@ float longitude;
 #define SNOOZE_BTN 45
 
 bool clockTaskFinished = false;
+bool enableClock       = false;
 
 // cron_job* jobs[];
 std::map<CronId, cust_cron_expr> alarms;
@@ -59,6 +60,7 @@ std::vector<String> alarmBtns  = {"p1b11", "p1b12", "p1b21", "p1b22", "p1b23", "
 uint8_t alarmHour              = 0;
 uint8_t alarmMinute            = 0;
 bool alarmDays[7]              = {0, 0, 0, 0, 0, 0, 0};
+bool alarmEnable               = true;
 std::vector<String> daysString = {"Sun ", "Mon ", "Tue ", "Wed ", "Thu ", "Fri ", "Sat "};
 
 TinyGPSPlus gps;
@@ -148,6 +150,13 @@ void custom_clock_loop(void*)
     digitalWrite(MIN2, LOW);
 
     while(1) {
+        if(!enableClock) {
+            digitalWrite(HR1, LOW);
+            digitalWrite(HR2, LOW);
+            digitalWrite(MIN1, LOW);
+            digitalWrite(MIN2, LOW);
+            continue;
+        }
         time_t rawtime;
         time(&rawtime);
 
@@ -232,6 +241,8 @@ void custom_setup()
     }
     // SD END
 
+    enableClock = false;
+
     // clock init
     pinMode(ST_CP, OUTPUT);
     pinMode(SH_CP, OUTPUT);
@@ -246,6 +257,15 @@ void custom_setup()
     gpsSerial.begin(GPS_BAUD, EspSoftwareSerial::SWSERIAL_8N1, GPS_RX, -1, false);
 
     time_t epoch_time = GPSTime();
+
+    // if(latitude && longitude) {
+    //     LOG_INFO(TAG_CUSTOM, "using gps coords");
+    //     setenv("TZ", timezone_find(latitude, longitude).c_str(), 1);
+    // } else {
+    setenv("TZ", "EST+5EDT,M3.2.0/2,M11.1.0/2", 1);
+    // }
+    tzset();
+
     // struct timeval nowTmp = {.tv_sec = epoch_time};
     // settimeofday(&nowTmp, NULL);
 
@@ -277,7 +297,7 @@ void custom_setup()
         size_t bytesRead          = alarmsFile2.readBytes(bufAlarm, sizeof(bufAlarm));
         cust_cron_expr* alarmReed = (cust_cron_expr*)bufAlarm;
         Serial.printf("ALARM %i TIME: %i:%i\n", i, alarmReed->hours, alarmReed->minutes);
-        Serial.printf("ALARM %i DAY: S:%iM:%iT:%iW:%iT:%iF:%iS:%i\n", i, alarmReed->days[0], alarmReed->days[1],
+        Serial.printf("ALARM %i DAY: S:%i M:%i T:%i W:%i T:%i F:%i S:%i\n", i, alarmReed->days[0], alarmReed->days[1],
                       alarmReed->days[2], alarmReed->days[3], alarmReed->days[4], alarmReed->days[5],
                       alarmReed->days[6]);
         alarmsFile2.seek(sizeof(cust_cron_expr), SeekCur);
@@ -287,6 +307,7 @@ void custom_setup()
         for(int k = 0; k < 7; k++) {
             alarmDays[k] = alarmReed->days[k];
         }
+        alarmEnable = alarmReed->enable;
         // memcpy(alarmReed->days, alarmDays, sizeof(alarmDays));
         custom_alarm_set(true);
     }
@@ -294,14 +315,6 @@ void custom_setup()
     alarmsFile2.close();
 
     SD.end();
-
-    // if(latitude && longitude) {
-    //     LOG_INFO(TAG_CUSTOM, "using gps coords");
-    //     setenv("TZ", timezone_find(latitude, longitude).c_str(), 1);
-    // } else {
-    setenv("TZ", "EST+5EDT,M3.2.0/2,M11.1.0/2", 1);
-    // }
-    tzset();
 
     // SET UP COMMANDS
     filesystem_write_file("/alarm_log.cmd", HASP_ALARM_LOG_CMD, strlen(HASP_ALARM_LOG_CMD));
@@ -437,6 +450,8 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
                 }
             }
         }
+    } else if(matchWithWildcard(subtopic, "p2b1?2")) {
+        LOG_VERBOSE(TAG_CUSTOM, "ALARM TOGGLE BUTTON!!!1!!");
     } else {
         return;
     }
@@ -563,10 +578,11 @@ void custom_alarm_set(const bool init)
             boxId, boxId, alarmDaysStrAbbr);
 
     char en[200];
-    sprintf(en,
-            "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":145,\"y\":13,\"w\":50,\"h\":30,\"val\":1}",
-            boxId, boxId);
-
+    sprintf(
+        en,
+        "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":145,\"y\":13,\"w\":50,\"h\":30,\"val\":%i}",
+        boxId, boxId, alarmEnable);
+    alarmEnable     = true;
     uint8_t pagenum = haspPages.get();
 
     StaticJsonDocument<200> boxJson;
@@ -601,6 +617,11 @@ void custom_alarm_set(const bool init)
     if(!init) {
         custom_write_alarms();
     }
+}
+
+void custom_set_enable_clock(const bool set)
+{
+    enableClock = set;
 }
 
 #endif // HASP_USE_CUSTOM

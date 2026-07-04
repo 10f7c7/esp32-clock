@@ -1650,14 +1650,23 @@ void dispatch_service(const char*, const char* payload, uint8_t source)
 
 /************************CUSTOM COMMANDS************************/
 
-
-
 void dispatch_alarm_set(const char*, const char* payload, uint8_t source)
 {
-    LOG_INFO(TAG_MSGR, F(payload));
+    LOG_INFO(TAG_MSGR, "Alarms Setting...");
     custom_alarm_set();
 }
 
+void dispatch_disable_clock(const char*, const char* payload, uint8_t source)
+{
+    LOG_INFO(TAG_MSGR, "Disable Clock!");
+    custom_set_enable_clock(false);
+}
+
+void dispatch_enable_clock(const char*, const char* payload, uint8_t source)
+{
+    LOG_INFO(TAG_MSGR, "Enable Clock!");
+    custom_set_enable_clock(true);
+}
 
 /******************************************* Commands builder *******************************************/
 
@@ -1712,9 +1721,11 @@ void dispatchSetup()
     // dispatch_add_command(PSTR("brightness"), dispatch_backlight_obsolete);
     // dispatch_add_command(PSTR("light"), dispatch_backlight_obsolete);
     dispatch_add_command(PSTR("wakeup"), dispatch_wakeup_obsolete); // used in CC
-    
+
     // CUSTOM COMMANDS
     dispatch_add_command(PSTR("alarm_set"), dispatch_alarm_set);
+    dispatch_add_command(PSTR("disable_clock"), dispatch_disable_clock);
+    dispatch_add_command(PSTR("enable_clock"), dispatch_enable_clock);
 
 #if HASP_USE_SPIFFS > 0 || HASP_USE_LITTLEFS > 0
 #if defined(ARDUINO_ARCH_ESP32)

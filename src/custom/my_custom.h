@@ -28,6 +28,7 @@ typedef struct
     uint8_t minutes;
     uint8_t hours;
     bool days[7];
+    bool enable;
 } cust_cron_expr;
 
 /* This function is called at boot */
@@ -60,6 +61,8 @@ void custom_state_subtopic(const char* subtopic, const char* payload);
 void custom_write_alarms();
 
 void custom_alarm_set(const bool init = false);
+
+void custom_set_enable_clock(const bool set);
 
 #endif // HASP_USE_CUSTOM
 

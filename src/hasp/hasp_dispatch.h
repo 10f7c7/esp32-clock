@@ -105,7 +105,8 @@ void dispatch_state_brightness(const char* topic, hasp_event_t eventid, int32_t 
 void dispatch_state_val(const char* topic, hasp_event_t eventid, int32_t val);
 void dispatch_state_antiburn(hasp_event_t eventid);
 void dispatch_alarm_set(const char*, const char* payload, uint8_t source);
-
+void dispatch_disable_clock(const char*, const char* payload, uint8_t source);
+void dispatch_enable_clock(const char*, const char* payload, uint8_t source);
 
 /* ===== Getter and Setter Functions ===== */
 void dispatch_get_discovery_data(JsonDocument& doc);
