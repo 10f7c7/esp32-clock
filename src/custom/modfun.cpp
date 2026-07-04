@@ -32,3 +32,20 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels)
         file = root.openNextFile();
     }
 }
+
+bool matchWithWildcard(const char* text, const char* pattern)
+{
+    for(int i = 0;; ++i) {
+        // If we reach the end of both strings, it's a match
+        if(text[i] == '\0' && pattern[i] == '\0') return true;
+
+        // If one reaches the end but not the other, it's a mismatch
+        if(text[i] == '\0' || pattern[i] == '\0') return false;
+
+        // If pattern has a '?' it accepts any character in text
+        if(pattern[i] == '?') continue;
+
+        // If the characters don't match exactly, return false
+        if(text[i] != pattern[i]) return false;
+    }
+}
