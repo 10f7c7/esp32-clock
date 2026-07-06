@@ -5,6 +5,8 @@
 //        - Change false to true on line 9
 
 #include "hasplib.h"
+#include <cstdint>
+#include <string>
 
 #if defined(HASP_USE_CUSTOM) && HASP_USE_CUSTOM > 0 && true // <-- set this to true in your code
 
@@ -227,12 +229,8 @@ static void filesystem_write_file(const char* filename, const char* data, size_t
     }
 }
 
-void custom_setup()
+void custom_init_alarms()
 {
-    // Initialization code here
-    randomSeed(millis());
-
-    // SD BEGIN
     SPIClass spi = SPIClass(HSPI);
     spi.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
 
@@ -240,6 +238,54 @@ void custom_setup()
         Serial.println("Card Mount Failed");
     }
     // SD END
+
+    File alarmsFile2 = SD.open("/alarms.bin");
+
+    Serial.printf("Size of alarms.bin: %i", alarmsFile2.size());
+
+    size_t posRead = 0;
+
+    alarmsFile2.seek(posRead);
+
+    char buf[20];
+    size_t bytesRead   = alarmsFile2.readBytes(buf, sizeof(buf));
+    uint8_t* readCount = (uint8_t*)buf;
+    posRead += sizeof(uint8_t);
+    alarmsFile2.seek(posRead);
+
+    char realcount[20];
+    sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
+    LOG_VERBOSE(TAG_CUSTOM, realcount);
+
+    for(int i = 0; i < *readCount; i++) {
+        char bufAlarm[sizeof(cust_cron_expr)];
+        size_t bytesRead          = alarmsFile2.readBytes(bufAlarm, sizeof(bufAlarm));
+        cust_cron_expr* alarmReed = (cust_cron_expr*)bufAlarm;
+        Serial.printf("ALARM %i TIME: %i:%i\n", i, alarmReed->hours, alarmReed->minutes);
+        Serial.printf("ALARM %i DAY: S:%i M:%i T:%i W:%i T:%i F:%i S:%i\n", i, alarmReed->days[0], alarmReed->days[1],
+                      alarmReed->days[2], alarmReed->days[3], alarmReed->days[4], alarmReed->days[5],
+                      alarmReed->days[6]);
+        Serial.printf("ALARM %i ENABLE: %i\n", i, alarmReed->enable);
+        alarmsFile2.seek(sizeof(cust_cron_expr), SeekCur);
+
+        alarmMinute = alarmReed->minutes;
+        alarmHour   = alarmReed->hours;
+        for(int k = 0; k < 7; k++) {
+            alarmDays[k] = alarmReed->days[k];
+        }
+        alarmEnable = alarmReed->enable;
+        // memcpy(alarmReed->days, alarmDays, sizeof(alarmDays));
+        // custom_alarm_set(true);
+    }
+
+    alarmsFile2.close();
+
+    SD.end();
+}
+void custom_setup()
+{
+    // Initialization code here
+    randomSeed(millis());
 
     enableClock = false;
 
@@ -276,45 +322,8 @@ void custom_setup()
 
     // // File alarmsFile = HASP_FS.open("/alarms.bin", "wr");
 
-    File alarmsFile2 = SD.open("/alarms.bin");
-
-    size_t posRead = 0;
-
-    alarmsFile2.seek(posRead);
-
-    char buf[20];
-    size_t bytesRead   = alarmsFile2.readBytes(buf, sizeof(buf));
-    uint8_t* readCount = (uint8_t*)buf;
-    posRead += sizeof(uint8_t);
-    alarmsFile2.seek(posRead);
-
-    char realcount[20];
-    sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
-    LOG_VERBOSE(TAG_CUSTOM, realcount);
-
-    for(int i = 0; i < *readCount; i++) {
-        char bufAlarm[sizeof(cust_cron_expr)];
-        size_t bytesRead          = alarmsFile2.readBytes(bufAlarm, sizeof(bufAlarm));
-        cust_cron_expr* alarmReed = (cust_cron_expr*)bufAlarm;
-        Serial.printf("ALARM %i TIME: %i:%i\n", i, alarmReed->hours, alarmReed->minutes);
-        Serial.printf("ALARM %i DAY: S:%i M:%i T:%i W:%i T:%i F:%i S:%i\n", i, alarmReed->days[0], alarmReed->days[1],
-                      alarmReed->days[2], alarmReed->days[3], alarmReed->days[4], alarmReed->days[5],
-                      alarmReed->days[6]);
-        alarmsFile2.seek(sizeof(cust_cron_expr), SeekCur);
-
-        alarmMinute = alarmReed->minutes;
-        alarmHour   = alarmReed->hours;
-        for(int k = 0; k < 7; k++) {
-            alarmDays[k] = alarmReed->days[k];
-        }
-        alarmEnable = alarmReed->enable;
-        // memcpy(alarmReed->days, alarmDays, sizeof(alarmDays));
-        custom_alarm_set(true);
-    }
-
-    alarmsFile2.close();
-
-    SD.end();
+    // SD BEGIN
+    custom_init_alarms();
 
     // SET UP COMMANDS
     filesystem_write_file("/alarm_log.cmd", HASP_ALARM_LOG_CMD, strlen(HASP_ALARM_LOG_CMD));
@@ -428,6 +437,8 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
     sprintf(buffer, "ST: %s | PL: %s", subtopic, payload);
     LOG_VERBOSE(TAG_CUSTOM, buffer);
 
+    char idString;
+
     if(std::find(alarmBtns.begin(), alarmBtns.end(), subtopic) != alarmBtns.end()) {
         StaticJsonDocument<128> json;
         DeserializationError jsonError = deserializeJson(json, payload);
@@ -450,8 +461,64 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
                 }
             }
         }
-    } else if(matchWithWildcard(subtopic, "p2b1?2")) {
+    } else if(matchWithWildcard(subtopic, "p2b1?2", idString)) {
         LOG_VERBOSE(TAG_CUSTOM, "ALARM TOGGLE BUTTON!!!1!!");
+
+        // extract alarm index
+        Serial.printf("val of button ID: %c\n", idString);
+        // LOG_VERBOSE(TAG_CUSTOM, "%s", idString);
+
+        StaticJsonDocument<200> buttonJson;
+        DeserializationError buttonError = deserializeJson(buttonJson, payload);
+        const char* event                = ("event");
+        const char* val                  = ("val");
+        if(buttonError == DeserializationError::Ok) {
+            LOG_ERROR(TAG_CUSTOM, "%s", buttonJson[event].as<String>());
+            if(buttonJson[event].as<String>() == "up") {
+                // for(std::map<CronId, cust_cron_expr>::iterator it = alarms.begin(); it != alarms.end(); ++it) {
+                //     Serial.printf("Key: %i\n", it->first);
+                //     Serial.printf("val: %i\n", it->second);
+                // }
+
+                cust_cron_expr tmp = alarms[std::stoi(std::string(1, idString)) - 1];
+                tmp.enable         = buttonJson[val].as<bool>();
+
+                if(tmp.enable) {
+                    Cron.enable(std::stoi(std::string(1, idString)) - 1);
+                } else if(!tmp.enable) {
+                    Cron.disable(std::stoi(std::string(1, idString)) - 1);
+                }
+
+                alarms[std::stoi(std::string(1, idString)) - 1] = tmp;
+                custom_write_alarms();
+                // Serial.printf("\n");
+                // for(int i = 0; i < alarms.size(); i++) {
+                //     Serial.printf("ID: %i, HOUR: %i, ENABLED: %d \n", i, alarms[i].hours, alarms[i].enable);
+                // }
+            }
+        } else {
+            LOG_ERROR(TAG_CUSTOM, "failed to create list item");
+        }
+    } else if(matchWithWildcard(subtopic, "p2b1?4", idString)) {
+        haspPages.clear(2);
+        char mainBox[200] = "{\"page\":2,\"id\":10,\"obj\":\"obj\",\"x\":5,\"y\":40,\"w\":230,\"h\":270,\"click\":0,"
+                            "\"bg_color\":\"#52596b\",\"bg_grad_dir\":0}";
+        StaticJsonDocument<200> mainBoxJson;
+        DeserializationError mainBoxError = deserializeJson(mainBoxJson, mainBox);
+        if(mainBoxError == DeserializationError::Ok) {
+            uint8_t pagenum = haspPages.get();
+            hasp_new_object(mainBoxJson.as<JsonObject>(), pagenum);
+        } else {
+            LOG_ERROR(TAG_CUSTOM, "failed to create list item");
+        }
+        //
+        // for(int i = 0; i < alarms.size(); i++) {
+        //     Cron.free(i);
+        // }
+        // alarms.erase(std::stoi(std::string(1, idString)) - 1);
+        // custom_write_alarms();
+        // custom_init_alarms();
+
     } else {
         return;
     }
@@ -497,6 +564,7 @@ void custom_write_alarms()
     sprintf(buffer, "SIZE OF SAVING: %i", alarmSize);
     LOG_TRACE(TAG_CUSTOM, buffer);
 
+    // if(alarmSize) {
     alarmsFile.write(&alarmSize, sizeof(uint8_t));
 
     alarmsFile.seek(sizeof(uint8_t));
@@ -504,8 +572,11 @@ void custom_write_alarms()
     for(auto it = alarms.begin(); it != alarms.end(); ++it) {
         alarmsFile.write(reinterpret_cast<unsigned char*>(&it->second), sizeof(cust_cron_expr));
         alarmsFile.seek(sizeof(cust_cron_expr), SeekCur);
+        // Serial.printf("WRITTIGN ALARM: %i, ENB: %i\n", it->first, it->second.enable);
     }
-
+    // } else {
+    //     alarmsFile.write(0);
+    // }
     alarmsFile.close();
     SD.end();
 }
@@ -529,7 +600,8 @@ void custom_alarm_set(const bool init)
     cust_cron_expr expr;
     expr.minutes = alarmMinute;
     // strncpy(expr.minutes, alarmMinute, sizeof(expr.minutes) - 1);
-    expr.hours = alarmHour;
+    expr.hours  = alarmHour;
+    expr.enable = alarmEnable;
     // strncpy(expr.hours, alarmHour, sizeof(expr.hours) - 1);
     memcpy(expr.days, alarmDays, sizeof(alarmDays));
     char buf[27];
@@ -580,9 +652,22 @@ void custom_alarm_set(const bool init)
     char en[200];
     sprintf(
         en,
-        "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":145,\"y\":13,\"w\":50,\"h\":30,\"val\":%i}",
+        "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":140,\"y\":13,\"w\":50,\"h\":30,\"val\":%i}",
         boxId, boxId, alarmEnable);
-    alarmEnable     = true;
+    alarmEnable = true;
+
+    char edit[200];
+    sprintf(edit,
+            "{\"page\":2,\"id\":%i3,\"parentid\":%i,\"obj\":\"btn\",\"x\":194,\"y\":0,\"w\":25,\"h\":28,\"text\":"
+            "\"\uE493\",\"align\":\"center\",\"bg_color\":\"#52596b\",\"radius\":5}",
+            boxId, boxId);
+
+    char trash[200];
+    sprintf(trash,
+            "{\"page\":2,\"id\":%i4,\"parentid\":%i,\"obj\":\"btn\",\"x\":194,\"y\":28,\"w\":25,\"h\":28,\"text\":"
+            "\"\uEA7A\",\"align\":\"center\",\"bg_color\":\"#52596b\",\"radius\":5}",
+            boxId, boxId);
+
     uint8_t pagenum = haspPages.get();
 
     StaticJsonDocument<200> boxJson;
@@ -611,6 +696,21 @@ void custom_alarm_set(const bool init)
     DeserializationError enError = deserializeJson(enJson, en);
     if(enError == DeserializationError::Ok) {
         hasp_new_object(enJson.as<JsonObject>(), pagenum);
+    } else {
+        LOG_ERROR(TAG_CUSTOM, "failed to create list item");
+    }
+    StaticJsonDocument<200> editJson;
+    DeserializationError editError = deserializeJson(editJson, edit);
+    if(editError == DeserializationError::Ok) {
+        hasp_new_object(editJson.as<JsonObject>(), pagenum);
+    } else {
+        LOG_ERROR(TAG_CUSTOM, "failed to create list item");
+    }
+
+    StaticJsonDocument<200> trashJson;
+    DeserializationError trashError = deserializeJson(trashJson, trash);
+    if(trashError == DeserializationError::Ok) {
+        hasp_new_object(trashJson.as<JsonObject>(), pagenum);
     } else {
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
     }
