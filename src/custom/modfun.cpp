@@ -33,7 +33,7 @@ void listDir(fs::FS& fs, const char* dirname, uint8_t levels)
     }
 }
 
-bool matchWithWildcard(const char* text, const char* pattern)
+bool matchWithWildcard(const char* text, const char* pattern, char& idstring)
 {
     for(int i = 0;; ++i) {
         // If we reach the end of both strings, it's a match
@@ -43,7 +43,10 @@ bool matchWithWildcard(const char* text, const char* pattern)
         if(text[i] == '\0' || pattern[i] == '\0') return false;
 
         // If pattern has a '?' it accepts any character in text
-        if(pattern[i] == '?') continue;
+        if(pattern[i] == '?') {
+            idstring = text[i];
+            continue;
+        };
 
         // If the characters don't match exactly, return false
         if(text[i] != pattern[i]) return false;
