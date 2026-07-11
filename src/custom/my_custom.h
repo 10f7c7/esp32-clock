@@ -64,6 +64,8 @@ void custom_alarm_set(const bool init = false);
 
 void custom_set_enable_clock(const bool set);
 
+void custom_init_alarms();
+
 #endif // HASP_USE_CUSTOM
 
 #endif // HASP_CUSTOM_H

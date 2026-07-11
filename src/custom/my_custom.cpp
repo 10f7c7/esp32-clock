@@ -7,6 +7,8 @@
 #include "SD.h"
 #include "hasp_macro.h"
 #include "hasplib.h"
+#include <cstdint>
+#include <string>
 
 #if defined(HASP_USE_CUSTOM) && HASP_USE_CUSTOM > 0 && true // <-- set this to true in your code
 
@@ -229,12 +231,8 @@ static void filesystem_write_file(const char* filename, const char* data, size_t
     }
 }
 
-void custom_setup()
+void custom_init_alarms()
 {
-    // Initialization code here
-    randomSeed(millis());
-
-    // SD BEGIN
     SPIClass spi = SPIClass(HSPI);
     spi.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
 
@@ -242,6 +240,54 @@ void custom_setup()
         Serial.println("Card Mount Failed");
     }
     // SD END
+
+    File alarmsFile2 = SD.open("/alarms.bin");
+
+    Serial.printf("Size of alarms.bin: %i", alarmsFile2.size());
+
+    size_t posRead = 0;
+
+    alarmsFile2.seek(posRead);
+
+    char buf[20];
+    size_t bytesRead   = alarmsFile2.readBytes(buf, sizeof(buf));
+    uint8_t* readCount = (uint8_t*)buf;
+    posRead += sizeof(uint8_t);
+    alarmsFile2.seek(posRead);
+
+    char realcount[20];
+    sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
+    LOG_VERBOSE(TAG_CUSTOM, realcount);
+
+    for(int i = 0; i < *readCount; i++) {
+        char bufAlarm[sizeof(cust_cron_expr)];
+        size_t bytesRead          = alarmsFile2.readBytes(bufAlarm, sizeof(bufAlarm));
+        cust_cron_expr* alarmReed = (cust_cron_expr*)bufAlarm;
+        Serial.printf("ALARM %i TIME: %i:%i\n", i, alarmReed->hours, alarmReed->minutes);
+        Serial.printf("ALARM %i DAY: S:%i M:%i T:%i W:%i T:%i F:%i S:%i\n", i, alarmReed->days[0], alarmReed->days[1],
+                      alarmReed->days[2], alarmReed->days[3], alarmReed->days[4], alarmReed->days[5],
+                      alarmReed->days[6]);
+        Serial.printf("ALARM %i ENABLE: %i\n", i, alarmReed->enable);
+        alarmsFile2.seek(sizeof(cust_cron_expr), SeekCur);
+
+        alarmMinute = alarmReed->minutes;
+        alarmHour   = alarmReed->hours;
+        for(int k = 0; k < 7; k++) {
+            alarmDays[k] = alarmReed->days[k];
+        }
+        alarmEnable = alarmReed->enable;
+        // memcpy(alarmReed->days, alarmDays, sizeof(alarmDays));
+        // custom_alarm_set(true);
+    }
+
+    alarmsFile2.close();
+
+    SD.end();
+}
+void custom_setup()
+{
+    // Initialization code here
+    randomSeed(millis());
 
     enableClock = false;
 
@@ -278,45 +324,8 @@ void custom_setup()
 
     // // File alarmsFile = HASP_FS.open("/alarms.bin", "wr");
 
-    File alarmsFile2 = SD.open("/alarms.bin");
-
-    size_t posRead = 0;
-
-    alarmsFile2.seek(posRead);
-
-    char buf[20];
-    size_t bytesRead   = alarmsFile2.readBytes(buf, sizeof(buf));
-    uint8_t* readCount = (uint8_t*)buf;
-    posRead += sizeof(uint8_t);
-    alarmsFile2.seek(posRead);
-
-    char realcount[20];
-    sprintf(realcount, "ALARM COUNT: %i\n", *readCount);
-    LOG_VERBOSE(TAG_CUSTOM, realcount);
-
-    for(int i = 0; i < *readCount; i++) {
-        char bufAlarm[sizeof(cust_cron_expr)];
-        size_t bytesRead          = alarmsFile2.readBytes(bufAlarm, sizeof(bufAlarm));
-        cust_cron_expr* alarmReed = (cust_cron_expr*)bufAlarm;
-        Serial.printf("ALARM %i TIME: %i:%i\n", i, alarmReed->hours, alarmReed->minutes);
-        Serial.printf("ALARM %i DAY: S:%i M:%i T:%i W:%i T:%i F:%i S:%i\n", i, alarmReed->days[0], alarmReed->days[1],
-                      alarmReed->days[2], alarmReed->days[3], alarmReed->days[4], alarmReed->days[5],
-                      alarmReed->days[6]);
-        alarmsFile2.seek(sizeof(cust_cron_expr), SeekCur);
-
-        alarmMinute = alarmReed->minutes;
-        alarmHour   = alarmReed->hours;
-        for(int k = 0; k < 7; k++) {
-            alarmDays[k] = alarmReed->days[k];
-        }
-        alarmEnable = alarmReed->enable;
-        // memcpy(alarmReed->days, alarmDays, sizeof(alarmDays));
-        custom_alarm_set(true);
-    }
-
-    alarmsFile2.close();
-
-    SD.end();
+    // SD BEGIN
+    custom_init_alarms();
 
     // SET UP COMMANDS
     filesystem_write_file("/alarm_log.cmd", HASP_ALARM_LOG_CMD, strlen(HASP_ALARM_LOG_CMD));
@@ -429,7 +438,9 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
     char buffer[500];
     sprintf(buffer, "ST: %s | PL: %s", subtopic, payload);
     LOG_VERBOSE(TAG_CUSTOM, buffer);
+
     char idString;
+
     if(std::find(alarmBtns.begin(), alarmBtns.end(), subtopic) != alarmBtns.end()) {
         StaticJsonDocument<128> json;
         DeserializationError jsonError = deserializeJson(json, payload);
@@ -555,6 +566,7 @@ void custom_write_alarms()
     sprintf(buffer, "SIZE OF SAVING: %i", alarmSize);
     LOG_TRACE(TAG_CUSTOM, buffer);
 
+    // if(alarmSize) {
     alarmsFile.write(&alarmSize, sizeof(uint8_t));
 
     alarmsFile.seek(sizeof(uint8_t));
@@ -562,8 +574,11 @@ void custom_write_alarms()
     for(auto it = alarms.begin(); it != alarms.end(); ++it) {
         alarmsFile.write(reinterpret_cast<unsigned char*>(&it->second), sizeof(cust_cron_expr));
         alarmsFile.seek(sizeof(cust_cron_expr), SeekCur);
+        // Serial.printf("WRITTIGN ALARM: %i, ENB: %i\n", it->first, it->second.enable);
     }
-
+    // } else {
+    //     alarmsFile.write(0);
+    // }
     alarmsFile.close();
     SD.end();
 }

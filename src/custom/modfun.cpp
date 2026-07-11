@@ -46,7 +46,7 @@ bool matchWithWildcard(const char* text, const char* pattern, char& idstring)
         if(pattern[i] == '?') {
             idstring = text[i];
             continue;
-        };
+        }
 
         // If the characters don't match exactly, return false
         if(text[i] != pattern[i]) return false;
