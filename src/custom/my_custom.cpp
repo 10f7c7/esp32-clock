@@ -4,6 +4,8 @@
 // USAGE: - Copy this file and rename it to my_custom.cpp
 //        - Change false to true on line 9
 
+#include "SD.h"
+#include "hasp_macro.h"
 #include "hasplib.h"
 #include <cstdint>
 #include <string>
@@ -463,7 +465,6 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
         }
     } else if(matchWithWildcard(subtopic, "p2b1?2", idString)) {
         LOG_VERBOSE(TAG_CUSTOM, "ALARM TOGGLE BUTTON!!!1!!");
-
         // extract alarm index
         Serial.printf("val of button ID: %c\n", idString);
         // LOG_VERBOSE(TAG_CUSTOM, "%s", idString);
@@ -500,25 +501,25 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
             LOG_ERROR(TAG_CUSTOM, "failed to create list item");
         }
     } else if(matchWithWildcard(subtopic, "p2b1?4", idString)) {
-        haspPages.clear(2);
-        char mainBox[200] = "{\"page\":2,\"id\":10,\"obj\":\"obj\",\"x\":5,\"y\":40,\"w\":230,\"h\":270,\"click\":0,"
-                            "\"bg_color\":\"#52596b\",\"bg_grad_dir\":0}";
-        StaticJsonDocument<200> mainBoxJson;
-        DeserializationError mainBoxError = deserializeJson(mainBoxJson, mainBox);
-        if(mainBoxError == DeserializationError::Ok) {
-            uint8_t pagenum = haspPages.get();
-            hasp_new_object(mainBoxJson.as<JsonObject>(), pagenum);
-        } else {
-            LOG_ERROR(TAG_CUSTOM, "failed to create list item");
-        }
+        // haspPages.clear(2);
+        // char mainBox[200] = "{\"page\":2,\"id\":10,\"obj\":\"obj\",\"x\":5,\"y\":40,\"w\":230,\"h\":270,\"click\":0,"
+        //                     "\"bg_color\":\"#52596b\",\"bg_grad_dir\":0}";
+        // StaticJsonDocument<200> mainBoxJson;
+        // DeserializationError mainBoxError = deserializeJson(mainBoxJson, mainBox);
+        // if(mainBoxError == DeserializationError::Ok) {
+        //     uint8_t pagenum = haspPages.get();
+        //     hasp_new_object(mainBoxJson.as<JsonObject>(), pagenum);
+        // } else {
+        //     LOG_ERROR(TAG_CUSTOM, "failed to create list item");
+        // }
         //
         // for(int i = 0; i < alarms.size(); i++) {
         //     Cron.free(i);
         // }
+        // LOG_INFO(TAG_CUSTOM, "Erasing item");
         // alarms.erase(std::stoi(std::string(1, idString)) - 1);
         // custom_write_alarms();
         // custom_init_alarms();
-
     } else {
         return;
     }
@@ -547,6 +548,7 @@ void custom_state_subtopic(const char* subtopic, const char* payload)
 
 void custom_write_alarms()
 {
+    LOG_INFO(TAG_CUSTOM, "STARTING TO WRITE ALARMS");
     SPIClass spi = SPIClass(HSPI);
     spi.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
 
@@ -601,14 +603,17 @@ void custom_alarm_set(const bool init)
     expr.minutes = alarmMinute;
     // strncpy(expr.minutes, alarmMinute, sizeof(expr.minutes) - 1);
     expr.hours  = alarmHour;
-    expr.enable = alarmEnable;
-    // strncpy(expr.hours, alarmHour, sizeof(expr.hours) - 1);
+    expr.enable = alarmEnable; // strncpy(expr.hours, alarmHour, sizeof(expr.hours) - 1);
     memcpy(expr.days, alarmDays, sizeof(alarmDays));
     char buf[27];
     sprintf(buf, "0 %i %i * * %s", alarmMinute, alarmHour, alarmDaysStr);
     CronId id = Cron.create(buf, crontest, false);
     LOG_VERBOSE(TAG_CUSTOM, buf);
     alarms.insert(std::make_pair(id, expr));
+
+    if(!init) {
+        custom_write_alarms();
+    }
 
     // {"page":2,"id":11,"parentid":10,"obj":"obj","x":5,"y":5,"w":220,"h":56,"click":0,"bg_color":"Gray","bg_grad_dir":0,"border_side":0}
     // {"page":2,"id":110,"parentid":11,"obj":"label","x":10,"y":0,"w":150,"h":50,"text":"06:00","text_font":32}
@@ -650,12 +655,10 @@ void custom_alarm_set(const bool init)
             boxId, boxId, alarmDaysStrAbbr);
 
     char en[200];
-    sprintf(
-        en,
-        "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":140,\"y\":13,\"w\":50,\"h\":30,\"val\":%i}",
-        boxId, boxId, alarmEnable);
-    alarmEnable = true;
-
+    sprintf(en,
+            "{\"page\":2,\"id\":%i2,\"parentid\":%i,\"obj\":\"switch\",\"x\":140,\"y\":13,\"w\":50,\"h\":30,"
+            "\"val\":%i}",
+            boxId, boxId, alarmEnable);
     char edit[200];
     sprintf(edit,
             "{\"page\":2,\"id\":%i3,\"parentid\":%i,\"obj\":\"btn\",\"x\":194,\"y\":0,\"w\":25,\"h\":28,\"text\":"
@@ -667,55 +670,51 @@ void custom_alarm_set(const bool init)
             "{\"page\":2,\"id\":%i4,\"parentid\":%i,\"obj\":\"btn\",\"x\":194,\"y\":28,\"w\":25,\"h\":28,\"text\":"
             "\"\uEA7A\",\"align\":\"center\",\"bg_color\":\"#52596b\",\"radius\":5}",
             boxId, boxId);
-
+    alarmEnable     = true;
     uint8_t pagenum = haspPages.get();
 
-    StaticJsonDocument<200> boxJson;
-    DeserializationError boxError = deserializeJson(boxJson, box);
+    StaticJsonDocument<200>* boxJson = new StaticJsonDocument<200>;
+    DeserializationError boxError    = deserializeJson(*boxJson, box);
     if(boxError == DeserializationError::Ok) {
-        hasp_new_object(boxJson.as<JsonObject>(), pagenum);
+        hasp_new_object(boxJson->as<JsonObject>(), pagenum);
     } else {
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
     }
-    StaticJsonDocument<200> timeJson;
-    DeserializationError timeError = deserializeJson(timeJson, time);
+    StaticJsonDocument<200>* timeJson = new StaticJsonDocument<200>;
+    DeserializationError timeError    = deserializeJson(*timeJson, time);
     if(timeError == DeserializationError::Ok) {
-        hasp_new_object(timeJson.as<JsonObject>(), pagenum);
+        hasp_new_object(timeJson->as<JsonObject>(), pagenum);
     } else {
         LOG_ERROR(TAG_CUSTOM, time);
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
     }
-    StaticJsonDocument<200> dayJson;
-    DeserializationError dayError = deserializeJson(dayJson, day);
+    StaticJsonDocument<200>* dayJson = new StaticJsonDocument<200>;
+    DeserializationError dayError    = deserializeJson(*dayJson, day);
     if(dayError == DeserializationError::Ok) {
-        hasp_new_object(dayJson.as<JsonObject>(), pagenum);
+        hasp_new_object(dayJson->as<JsonObject>(), pagenum);
     } else {
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
     }
-    StaticJsonDocument<200> enJson;
-    DeserializationError enError = deserializeJson(enJson, en);
+    StaticJsonDocument<200>* enJson = new StaticJsonDocument<200>;
+    DeserializationError enError    = deserializeJson(*enJson, en);
     if(enError == DeserializationError::Ok) {
-        hasp_new_object(enJson.as<JsonObject>(), pagenum);
+        hasp_new_object(enJson->as<JsonObject>(), pagenum);
     } else {
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
     }
-    StaticJsonDocument<200> editJson;
-    DeserializationError editError = deserializeJson(editJson, edit);
+    StaticJsonDocument<200>* editJson = new StaticJsonDocument<200>;
+    DeserializationError editError    = deserializeJson(*editJson, edit);
     if(editError == DeserializationError::Ok) {
-        hasp_new_object(editJson.as<JsonObject>(), pagenum);
+        hasp_new_object(editJson->as<JsonObject>(), pagenum);
     } else {
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
     }
-
-    StaticJsonDocument<200> trashJson;
-    DeserializationError trashError = deserializeJson(trashJson, trash);
+    StaticJsonDocument<200>* trashJson = new StaticJsonDocument<200>;
+    DeserializationError trashError    = deserializeJson(*trashJson, trash);
     if(trashError == DeserializationError::Ok) {
-        hasp_new_object(trashJson.as<JsonObject>(), pagenum);
+        hasp_new_object(trashJson->as<JsonObject>(), pagenum);
     } else {
         LOG_ERROR(TAG_CUSTOM, "failed to create list item");
-    }
-    if(!init) {
-        custom_write_alarms();
     }
 }
 
